@@ -29,22 +29,22 @@ class Setting(db.Model):
 
 # Fetch Gold Price from Alpha Vantage
 def get_gold_price():
-    api_key = "1YOX3GVJ3A6R7AIQ" #"900GFGTHI3OMVZ4C" #1YOX3GVJ3A6R7AIQ #os.getenv('ALPHA_VANTAGE_API_KEY')
     ounce_gram_factor = 31.1034768
     # Fetch USD/EUR
-    # url_usd_eur = f'https://www.alphavantage.co/query?function=CURRENCY_EXCHANGE_RATErom_currency=USD&to_currency=EUR&apikey={api_key}'
-    # response_usd_eur = requests.get(url_usd_eur).json()
-    #print(response_usd_eur)
-    usd_eur = 0.87777 #float(response_usd_eur['Realtime Currency Exchange Rate']['5. Exchange Rate'])
+    url_usd_eur = f'https://api.frankfurter.dev/v1/latest?base=USD&symbols=EUR'
+    response_usd_eur = requests.get(url_usd_eur).json()
+    print(response_usd_eur)
+    usd_eur = float(response_usd_eur['rates']['EUR'])
+    print(usd_eur)
     # Fetch XAU/USD
     url_xau_usd = f'https://api.gold-api.com/price/XAU'
     response_xau_usd = requests.get(url_xau_usd).json()
     print(response_xau_usd)
     xau_usd = float(response_xau_usd['price'])
+    print(xau_usd)
     # Calculate XAU/EUR
-    xau_eur = usd_eur * xau_usd
-    return xau_eur / ounce_gram_factor
-
+    return (usd_eur * xau_usd) / ounce_gram_factor
+    
 # Fetch, Store, and Check Price
 def fetch_and_store_price():
     try:

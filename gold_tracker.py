@@ -1,22 +1,20 @@
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from apscheduler.schedulers.background import BackgroundScheduler
-import smtplib
-from email.mime.text import MIMEText
+import requests
 from datetime import datetime, timedelta
 import os
-import requests
-import json
+import smtplib
+from email.mime.text import MIMEText
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///gold_prices.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['EMAIL_USER'] = os.getenv('EMAIL_USER')  # xxx.mkb@outlook.com
-app.config['EMAIL_PASSWORD'] = os.getenv('EMAIL_PASSWORD')  # Your password or app password
+app.config['EMAIL_USER'] = os.getenv('EMAIL_USER')
+app.config['EMAIL_PASSWORD'] = os.getenv('EMAIL_PASSWORD')
 db = SQLAlchemy(app)
 
-# Database Models
-class Price(db.Model):
+class GoldPrice(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
     price = db.Column(db.Float)
@@ -27,39 +25,29 @@ class Setting(db.Model):
     recipient_email = db.Column(db.String(120))
     last_email_time = db.Column(db.DateTime)
 
-# Fetch Gold Price from Alpha Vantage
 def get_gold_price():
     ounce_gram_factor = 31.1034768
-    # Fetch USD/EUR
-    url_usd_eur = f'https://api.frankfurter.dev/v1/latest?base=USD&symbols=EUR'
+    url_usd_eur = 'https://api.frankfurter.app/latest?from=USD&to=EUR'
     response_usd_eur = requests.get(url_usd_eur).json()
-    print(response_usd_eur)
     usd_eur = float(response_usd_eur['rates']['EUR'])
-    print(usd_eur)
-    # Fetch XAU/USD
-    url_xau_usd = f'https://api.gold-api.com/price/XAU'
+    url_xau_usd = 'https://api.gold-api.com/price/XAU'
     response_xau_usd = requests.get(url_xau_usd).json()
-    print(response_xau_usd)
     xau_usd = float(response_xau_usd['price'])
-    print(xau_usd)
-    # Calculate XAU/EUR
     return (usd_eur * xau_usd) / ounce_gram_factor
-    
-# Fetch, Store, and Check Price
+
 def fetch_and_store_price():
     try:
         price = get_gold_price()
-        new_price = Price(price=price)
+        today = datetime.utcnow().date()
+        today_lowest = db.session.query(db.func.min(GoldPrice.price)).filter(db.func.date(GoldPrice.timestamp) == today).scalar()
+        yesterday = today - timedelta(days=1)
+        yesterday_lowest = db.session.query(db.func.min(GoldPrice.price)).filter(db.func.date(GoldPrice.timestamp) == yesterday).scalar()
+        new_price = GoldPrice(price=price)
         db.session.add(new_price)
         db.session.commit()
-        # Check notification conditions
-        today = datetime.utcnow().date()
-        yesterday = today - timedelta(days=1)
-        today_lowest = db.session.query(db.func.min(Price.price)).filter(db.func.date(Price.timestamp) == today).scalar()
-        yesterday_lowest = db.session.query(db.func.min(Price.price)).filter(db.func.date(Price.timestamp) == yesterday).scalar()
-        setting = Setting.query.first()
-        if setting and setting.email_notifications:
-            if (today_lowest is None or price < today_lowest) or (yesterday_lowest is not None and price < yesterday_lowest):
+        if (today_lowest is None or price < today_lowest) or (yesterday_lowest is not None and price < yesterday_lowest):
+            setting = Setting.query.first()
+            if setting and setting.email_notifications:
                 last_email_time = setting.last_email_time
                 if last_email_time is None or (datetime.utcnow() - last_email_time) > timedelta(hours=1):
                     send_email(setting.recipient_email, price)
@@ -68,7 +56,6 @@ def fetch_and_store_price():
     except Exception as e:
         print(f"Error fetching price: {e}")
 
-# Send Email Alert
 def send_email(recipient, price):
     msg = MIMEText(f'The gold price is now {price:.2f} €, which is a new low.')
     msg['Subject'] = 'Gold Price Alert'
@@ -79,12 +66,9 @@ def send_email(recipient, price):
         server.login(app.config['EMAIL_USER'], app.config['EMAIL_PASSWORD'])
         server.send_message(msg)
 
-# Scheduler Setup
 scheduler = BackgroundScheduler()
 scheduler.add_job(fetch_and_store_price, 'interval', seconds=90)
-scheduler.start()
 
-# Web Interface
 @app.route('/', methods=['GET', 'POST'])
 def index():
     if request.method == 'POST':
@@ -92,27 +76,26 @@ def index():
         recipient_email = request.form['recipient_email']
         setting = Setting.query.first()
         if setting is None:
-            setting = Setting(email_notifications=email_notifications, recipient_email=recipient_email)
+            setting = Setting(email_notifications=email_notifications, recipient_email=recipient_email, last_email_time=None)
             db.session.add(setting)
         else:
             setting.email_notifications = email_notifications
             setting.recipient_email = recipient_email
         db.session.commit()
         return redirect(url_for('index'))
-    latest_price = Price.query.order_by(Price.timestamp.desc()).first()
+    setting = Setting.query.first()
+    return render_template('index.html', setting=setting)
+
+@app.route('/get_data')
+def get_data():
     today = datetime.utcnow().date()
-    today_prices = Price.query.filter(db.func.date(Price.timestamp) == today).all()
+    today_prices = GoldPrice.query.filter(db.func.date(GoldPrice.timestamp) == today).all()
     timestamps = [p.timestamp.isoformat() for p in today_prices]
     prices = [p.price for p in today_prices]
-    setting = Setting.query.first()
-    return render_template('index.html', 
-                           latest_price=latest_price, 
-                           setting=setting, 
-                           timestamps_json=json.dumps(timestamps), 
-                           prices_json=json.dumps(prices))
+    return jsonify({'timestamps': timestamps, 'prices': prices})
 
 if __name__ == '__main__':
     with app.app_context():
-        db.create_all()  # Create database tables
-        fetch_and_store_price()  # Initial fetch
-    app.run(host='0.0.0.0', port=5000, debug=True)  # Accessible over local network
+        db.create_all()
+    scheduler.start()
+    app.run(host='0.0.0.0', port=5000, debug=True)

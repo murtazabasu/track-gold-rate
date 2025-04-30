@@ -36,25 +36,26 @@ def get_gold_price():
     return (usd_eur * xau_usd) / ounce_gram_factor
 
 def fetch_and_store_price():
-    try:
-        price = get_gold_price()
-        today = datetime.utcnow().date()
-        today_lowest = db.session.query(db.func.min(GoldPrice.price)).filter(db.func.date(GoldPrice.timestamp) == today).scalar()
-        yesterday = today - timedelta(days=1)
-        yesterday_lowest = db.session.query(db.func.min(GoldPrice.price)).filter(db.func.date(GoldPrice.timestamp) == yesterday).scalar()
-        new_price = GoldPrice(price=price)
-        db.session.add(new_price)
-        db.session.commit()
-        if (today_lowest is None or price < today_lowest) or (yesterday_lowest is not None and price < yesterday_lowest):
-            setting = Setting.query.first()
-            if setting and setting.email_notifications:
-                last_email_time = setting.last_email_time
-                if last_email_time is None or (datetime.utcnow() - last_email_time) > timedelta(hours=1):
-                    send_email(setting.recipient_email, price)
-                    setting.last_email_time = datetime.utcnow()
-                    db.session.commit()
-    except Exception as e:
-        print(f"Error fetching price: {e}")
+    with app.app_context():
+        try:
+            price = get_gold_price()
+            today = datetime.utcnow().date()
+            today_lowest = db.session.query(db.func.min(GoldPrice.price)).filter(db.func.date(GoldPrice.timestamp) == today).scalar()
+            yesterday = today - timedelta(days=1)
+            yesterday_lowest = db.session.query(db.func.min(GoldPrice.price)).filter(db.func.date(GoldPrice.timestamp) == yesterday).scalar()
+            new_price = GoldPrice(price=price)
+            db.session.add(new_price)
+            db.session.commit()
+            if (today_lowest is None or price < today_lowest) or (yesterday_lowest is not None and price < yesterday_lowest):
+                setting = Setting.query.first()
+                if setting and setting.email_notifications:
+                    last_email_time = setting.last_email_time
+                    if last_email_time is None or (datetime.utcnow() - last_email_time) > timedelta(hours=1):
+                        send_email(setting.recipient_email, price)
+                        setting.last_email_time = datetime.utcnow()
+                        db.session.commit()
+        except Exception as e:
+            print(f"Error fetching price: {e}")
 
 def send_email(recipient, price):
     msg = MIMEText(f'The gold price is now {price:.2f} €, which is a new low.')

@@ -11,7 +11,7 @@ from flask_sqlalchemy import SQLAlchemy
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///gold_prices.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['EMAIL_USER'] = "murtazakmb@outlook.com" #os.getenv('EMAIL_USER')
+app.config['EMAIL_USER'] = os.getenv("RECIPIENT_EMAIL")
 app.config['EMAIL_PASSWORD'] = os.getenv('EMAIL_PASSWORD')
 db = SQLAlchemy(app)
 

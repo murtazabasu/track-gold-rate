@@ -7,8 +7,7 @@ import requests
 client_id = os.getenv("APP_GOLD_PRICE_TRACKER_CLIENT_ID")
 tenant_id = os.getenv("SYNVERT_TENANT_ID")
 scopes = ["https://graph.microsoft.com/Mail.Send", "https://graph.microsoft.com/User.Read"]
-recipient_email = "recipient@domain.com"
-
+recipient_email = os.getenv("RECIPIENT_EMAIL")
 # Create a public client application
 app = msal.PublicClientApplication(
     client_id,

@@ -1,16 +1,17 @@
-from flask import Flask, render_template, request, redirect, url_for, jsonify
-from flask_sqlalchemy import SQLAlchemy
-from apscheduler.schedulers.background import BackgroundScheduler
-import requests
-from datetime import datetime, timedelta
 import os
 import smtplib
+from datetime import datetime, timedelta
 from email.mime.text import MIMEText
+
+import requests
+from apscheduler.schedulers.background import BackgroundScheduler
+from flask import Flask, jsonify, redirect, render_template, request, url_for
+from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///gold_prices.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['EMAIL_USER'] = os.getenv('EMAIL_USER')
+app.config['EMAIL_USER'] = "murtazakmb@outlook.com" #os.getenv('EMAIL_USER')
 app.config['EMAIL_PASSWORD'] = os.getenv('EMAIL_PASSWORD')
 db = SQLAlchemy(app)
 

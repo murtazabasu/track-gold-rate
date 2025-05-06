@@ -12,7 +12,7 @@ client_id = os.getenv("APP_GOLD_PRICE_TRACKER_CLIENT_ID")
 tenant_id = os.getenv("SYNVERT_TENANT_ID")
 scopes = ["https://graph.microsoft.com/Mail.Send", "https://graph.microsoft.com/User.Read"]
 redirect_uri = "http://localhost:5000/getToken"
-recipient_email = "murtazakmb@outlook.com"
+recipient_email = os.getenv("RECIPIENT_EMAIL")
 
 # Create a public client application
 # If the redirect URI is configured under the Web platform in the app registration, it will not be compatible
@@ -28,7 +28,7 @@ app = msal.PublicClientApplication(
 flask_app = Flask(__name__)
 auth_code = None
 
-@flask_app.route('/getToken') #getToken
+@flask_app.route('/getToken')
 def get_token():
     global auth_code
     auth_code = request.args.get('code')

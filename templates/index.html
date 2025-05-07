@@ -33,7 +33,7 @@
                 <form method="post">
                     <div class="mb-3">
                         <label for="recipient_email" class="form-label">Recipient Email:</label>
-                        <input type="email" class="form-control" id="recipient_email" name="recipient_email" value="{{ setting.recipient_email if setting else 'xxx.mkb@outlook.com' }}" required>
+                        <input type="email" class="form-control" id="recipient_email" name="recipient_email" value="{{ setting.recipient_email if setting else 'xxx@domain.com' }}" required>
                     </div>
                     <div class="mb-3 form-check">
                         <input type="checkbox" class="form-check-input" id="email_notifications" name="email_notifications" {% if setting and setting.email_notifications %}checked{% endif %}>
@@ -60,7 +60,7 @@
                 .then(data => {
                     // Update current price
                     if (data.prices.length > 0) {
-                        document.getElementById('current-price').innerText = data.prices[data.prices.length - 1].toFixed(2) + ' €';
+                        document.getElementById('current-price').innerText = data.prices[data.prices.length - 1].toFixed(2) + ' € / gram';
                         document.getElementById('last-updated').innerText = new Date().toLocaleString();
                     }
 

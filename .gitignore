@@ -1,4 +1,4 @@
 *.pyc
 *.pya
 __pycache__/
-instance/*.db
+*.db

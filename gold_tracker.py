@@ -11,7 +11,7 @@ app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///gold_prices.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['CLIENT_ID'] = os.getenv('APP_GOLD_PRICE_TRACKER_CLIENT_ID')
-app.config['CLIENT_SECRET'] = os.getenv("APP_GOLD_PRICE_TRACKER_SECRET_ID")
+app.config['CLIENT_SECRET'] = os.getenv("APP_GOLD_PRICE_TRACKER_CLIENT_SECRET")
 app.config['AUTHORITY'] = f"https://login.microsoftonline.com/{os.getenv('SYNVERT_TENANT_ID')}"
 app.config['REDIRECT_URI'] = "http://localhost:5000/get_token"
 app.config['SCOPES'] = ["https://graph.microsoft.com/Mail.Send", "https://graph.microsoft.com/User.Read"]
@@ -76,7 +76,7 @@ def send_email(recipient, price):
             "Subject": "Gold Price Alert",
             "Body": {
                 "ContentType": "Text",
-                "Content": f'The gold price is now {price:.2f} €, which is a new low.'
+                "Content": f'The gold price is now {price:.2f} € per gram, which is a new low.'
             },
             "ToRecipients": [
                 {
@@ -106,14 +106,12 @@ def fetch_and_store_price():
             new_price = GoldPrice(price=price)
             db.session.add(new_price)
             db.session.commit()
-            if (today_lowest is None or price < today_lowest) or (yesterday_lowest is not None and price < yesterday_lowest):
+            if (today_lowest is None or price < today_lowest): #or (yesterday_lowest is not None and price < yesterday_lowest):
                 setting = Setting.query.first()
                 if setting and setting.email_notifications:
-                    last_email_time = setting.last_email_time
-                    if last_email_time is None or (datetime.utcnow() - last_email_time) > timedelta(hours=1):
-                        send_email(setting.recipient_email, price)
-                        setting.last_email_time = datetime.utcnow()
-                        db.session.commit()
+                    send_email(setting.recipient_email, price)
+                    setting.last_email_time = datetime.utcnow()
+                    db.session.commit()
         except Exception as e:
             print(f"Error fetching price: {e}")
 

@@ -2,3 +2,4 @@
 *.pya
 __pycache__/
 instance/*.db
+oauth2_send_emails/__init__.py
